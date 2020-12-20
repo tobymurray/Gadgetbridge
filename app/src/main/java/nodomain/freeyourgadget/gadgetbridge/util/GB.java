@@ -26,8 +26,11 @@ import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.media.RingtoneManager;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 import android.widget.Toast;
 
 import org.slf4j.Logger;
@@ -59,6 +62,7 @@ import static nodomain.freeyourgadget.gadgetbridge.GBApplication.isRunningOreoOr
 public class GB {
 
     public static final String NOTIFICATION_CHANNEL_ID = "gadgetbridge";
+    public static final String NOTIFICATION_CHANNEL_ID_FIND_MY_DEVICE = "gadgetbridge finddevice";
     public static final String NOTIFICATION_CHANNEL_ID_TRANSFER = "gadgetbridge transfer";
 
     public static final int NOTIFICATION_ID = 1;
@@ -66,6 +70,7 @@ public class GB {
     public static final int NOTIFICATION_ID_LOW_BATTERY = 3;
     public static final int NOTIFICATION_ID_TRANSFER = 4;
     public static final int NOTIFICATION_ID_EXPORT_FAILED = 5;
+    public static final int NOTIFICATION_ID_FIND_MY_DEVICE = 6;
 
     private static final Logger LOG = LoggerFactory.getLogger(GB.class);
     public static final int INFO = 1;
@@ -376,6 +381,46 @@ public class GB {
         }
 
         return nb.build();
+    }
+
+    public static void startFindMyPhoneNotification(String title, String text, Context context) {
+        final Intent notificationIntent = new Intent(DeviceService.ACTION_FOUND_MY_PHONE);
+        final NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (isRunningOreoOrLater()) {
+            NotificationChannel channel = notificationManager.getNotificationChannel(NOTIFICATION_CHANNEL_ID_FIND_MY_DEVICE);
+            if (channel == null) {
+                channel = new NotificationChannel(NOTIFICATION_CHANNEL_ID_FIND_MY_DEVICE,
+                        context.getString(R.string.control_center_find_lost_device),
+                        NotificationManager.IMPORTANCE_HIGH);
+                notificationManager.createNotificationChannel(channel);
+            }
+        }
+
+        NotificationCompat.Builder nb = new NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID_FIND_MY_DEVICE)
+                .setTicker((title == null) ? context.getString(R.string.control_center_find_lost_device) : title)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setContentTitle((title == null) ? context.getString(R.string.find_device_you_found_it) : title)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(text))
+                .setSmallIcon(android.R.drawable.stat_notify_missed_call)
+                .setContentText(text)
+                .setContentIntent(PendingIntent.getService(context, 0, notificationIntent, 0))
+                .setOngoing(true)
+                .setVibrate(new long[]{500, 500})
+                .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM));
+
+        NotificationManagerCompat.from(context).notify(GB.NOTIFICATION_ID_FIND_MY_DEVICE, nb.build());
+        final Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
+        if (GBApplication.isRunningOreoOrLater()) {
+            vibrator.vibrate(VibrationEffect.createWaveform(new long[]{0, 1000, 500}, 1));
+        } else {
+            vibrator.vibrate(new long[]{0, 1000, 500}, 1);
+        }
+    }
+
+    public static void closeFindMyPhoneNotification(Context context) {
+        NotificationManagerCompat.from(context).cancel(GB.NOTIFICATION_ID_FIND_MY_DEVICE);
+        final Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
+        vibrator.cancel();
     }
 
     public static void removeAllNotifications(Context context) {

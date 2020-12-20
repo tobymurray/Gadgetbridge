@@ -293,6 +293,8 @@ public class NotificationListener extends NotificationListenerService {
 
         NotificationSpec notificationSpec = new NotificationSpec();
 
+        notificationSpec.when = notification.when;
+
         // determinate Source App Name ("Label")
         String name = getAppName(source);
         if (name != null) {

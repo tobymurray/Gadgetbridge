@@ -41,7 +41,6 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.Message;
 import android.os.ParcelUuid;
 import android.os.Parcelable;
 import android.view.View;
@@ -78,7 +77,7 @@ public class DiscoveryActivity extends AbstractGBActivity implements AdapterView
     private static final Logger LOG = LoggerFactory.getLogger(DiscoveryActivity.class);
     private static final long SCAN_DURATION = 60000; // 60s
 
-    private ScanCallback newLeScanCallback = null;
+    private final ScanCallback newLeScanCallback = getScanCallback();
 
     // Disabled for testing, it seems worse for a few people
     private boolean disableNewBLEScanning = false;
@@ -90,17 +89,19 @@ public class DiscoveryActivity extends AbstractGBActivity implements AdapterView
         public void onReceive(Context context, Intent intent) {
             switch (Objects.requireNonNull(intent.getAction())) {
                 case BluetoothAdapter.ACTION_DISCOVERY_STARTED:
+                    LOG.debug("bluetoothReceiver: ACTION_DISCOVERY_STARTED");
                     if (isScanning != Scanning.SCANNING_BTLE && isScanning != Scanning.SCANNING_NEW_BTLE) {
                         discoveryStarted(Scanning.SCANNING_BT);
                     }
                     break;
                 case BluetoothAdapter.ACTION_DISCOVERY_FINISHED:
+                    LOG.debug("bluetoothReceiver: ACTION_DISCOVERY_FINISHED");
                     handler.post(new Runnable() {
                         @Override
                         public void run() {
                             // continue with LE scan, if available
+                            LOG.debug("bluetoothReceiver: Continuing with LE? {}", isScanning);
                             if (isScanning == Scanning.SCANNING_BT) {
-                                checkAndRequestLocationPermission();
                                 if (GBApplication.isRunningLollipopOrLater() && !disableNewBLEScanning) {
                                     startDiscovery(Scanning.SCANNING_NEW_BTLE);
                                 } else {
@@ -113,16 +114,19 @@ public class DiscoveryActivity extends AbstractGBActivity implements AdapterView
                     });
                     break;
                 case BluetoothAdapter.ACTION_STATE_CHANGED:
+                    LOG.debug("bluetoothReceiver: ACTION_STATE_CHANGED");
                     int newState = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.STATE_OFF);
                     bluetoothStateChanged(newState);
                     break;
                 case BluetoothDevice.ACTION_FOUND: {
+                    LOG.debug("bluetoothReceiver: ACTION_FOUND");
                     BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                     short rssi = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, GBDevice.RSSI_UNKNOWN);
                     handleDeviceFound(device, rssi);
                     break;
                 }
                 case BluetoothDevice.ACTION_UUID: {
+                    LOG.debug("bluetoothReceiver: ACTION_UUID");
                     BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                     short rssi = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, GBDevice.RSSI_UNKNOWN);
                     Parcelable[] uuids = intent.getParcelableArrayExtra(BluetoothDevice.EXTRA_UUID);
@@ -131,6 +135,7 @@ public class DiscoveryActivity extends AbstractGBActivity implements AdapterView
                     break;
                 }
                 case BluetoothDevice.ACTION_BOND_STATE_CHANGED: {
+                    LOG.debug("bluetoothReceiver: ACTION_BOND_STATE_CHANGED");
                     BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                     if (device != null && bondingDevice != null && device.getAddress().equals(bondingDevice.getMacAddress())) {
                         int bondState = intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.BOND_NONE);
@@ -209,7 +214,7 @@ public class DiscoveryActivity extends AbstractGBActivity implements AdapterView
     // so use a method with SDK check to return this callback
     private ScanCallback getScanCallback() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            newLeScanCallback = new ScanCallback() {
+            return new ScanCallback() {
                 @TargetApi(Build.VERSION_CODES.LOLLIPOP)
                 @Override
                 public void onScanResult(int callbackType, ScanResult result) {
@@ -233,7 +238,7 @@ public class DiscoveryActivity extends AbstractGBActivity implements AdapterView
                 }
             };
         }
-        return newLeScanCallback;
+        return null;
     }
 
     public void logMessageContent(byte[] value) {
@@ -400,6 +405,7 @@ public class DiscoveryActivity extends AbstractGBActivity implements AdapterView
             LOG.warn("Not starting discovery, because already scanning.");
             return;
         }
+        checkAndRequestLocationPermission();
         startDiscovery(Scanning.SCANNING_BT);
     }
 
@@ -433,7 +439,7 @@ public class DiscoveryActivity extends AbstractGBActivity implements AdapterView
     }
 
     private void stopDiscovery() {
-        LOG.info("Stopping discovery");
+        LOG.info("Stopping discovery, was scanning {}", isScanning, new Exception("Stacktrace detector"));
         if (isScanning()) {
             Scanning wasScanning = isScanning;
             // unfortunately, we don't always get a call back when stopping the scan, so
@@ -447,7 +453,7 @@ public class DiscoveryActivity extends AbstractGBActivity implements AdapterView
             } else if (wasScanning == Scanning.SCANNING_NEW_BTLE) {
                 stopNewBTLEDiscovery();
             }
-            handler.removeMessages(0, stopRunnable);
+            handler.removeCallbacks(stopRunnable);
         }
     }
 
@@ -545,9 +551,9 @@ public class DiscoveryActivity extends AbstractGBActivity implements AdapterView
     private void startNEWBTLEDiscovery() {
         // Only use new API when user uses Lollipop+ device
         LOG.info("Start New BTLE Discovery");
-        handler.removeMessages(0, stopRunnable);
-        handler.sendMessageDelayed(getPostMessage(stopRunnable), SCAN_DURATION);
-        adapter.getBluetoothLeScanner().startScan(getScanFilters(), getScanSettings(), getScanCallback());
+        handler.removeCallbacks(stopRunnable);
+        handler.postDelayed(stopRunnable, SCAN_DURATION);
+        adapter.getBluetoothLeScanner().startScan(getScanFilters(), getScanSettings(), newLeScanCallback);
     }
 
     private List<ScanFilter> getScanFilters() {
@@ -574,28 +580,34 @@ public class DiscoveryActivity extends AbstractGBActivity implements AdapterView
 
     private void startBTLEDiscovery() {
         LOG.info("Starting BTLE Discovery");
-        handler.removeMessages(0, stopRunnable);
-        handler.sendMessageDelayed(getPostMessage(stopRunnable), SCAN_DURATION);
-        adapter.startLeScan(leScanCallback);
+        handler.removeCallbacks(stopRunnable);
+        handler.postDelayed(stopRunnable, SCAN_DURATION);
+        if (!adapter.startLeScan(leScanCallback)) {
+            LOG.error("Discovery failed");
+            stopDiscovery();
+        }
     }
 
     private void startBTDiscovery() {
         LOG.info("Starting BT Discovery");
-        handler.removeMessages(0, stopRunnable);
-        handler.sendMessageDelayed(getPostMessage(stopRunnable), SCAN_DURATION);
-        adapter.startDiscovery();
+        handler.removeCallbacks(stopRunnable);
+        handler.postDelayed(stopRunnable, SCAN_DURATION);
+        if (adapter.isDiscovering()) {
+            LOG.info("Canceling running discovery");
+            if (!adapter.cancelDiscovery()) {
+                LOG.error("Unable to cancel running discovery");
+            }
+        }
+        if (!adapter.startDiscovery()) {
+            LOG.error("Discovery failed");
+            stopDiscovery();
+        }
     }
 
     private void checkAndRequestLocationPermission() {
         if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, 0);
         }
-    }
-
-    private Message getPostMessage(Runnable runnable) {
-        Message m = Message.obtain(handler, runnable);
-        m.obj = runnable;
-        return m;
     }
 
     @Override

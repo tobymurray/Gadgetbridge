@@ -21,6 +21,8 @@ import android.util.SparseArray;
 
 import java.util.HashMap;
 
+import nodomain.freeyourgadget.gadgetbridge.devices.vivomovehr.VivomoveConstants;
+
 public class BleNamesResolver {
 	private static HashMap<String, String> mServices = new HashMap<String, String>();
 	private static HashMap<String, String> mCharacteristics = new HashMap<String, String>();
@@ -78,6 +80,9 @@ public class BleNamesResolver {
 	}	
 	
 	static {
+		/**
+		 * @see <a href="https://www.bluetooth.com/specifications/gatt/services/">BLE GATT Services</a>
+		 */
 		mServices.put("00001811-0000-1000-8000-00805f9b34fb", "Alert Notification Service");
 		mServices.put("0000180f-0000-1000-8000-00805f9b34fb", "Battery Service");
 		mServices.put("00001810-0000-1000-8000-00805f9b34fb", "Blood Pressure");
@@ -103,6 +108,8 @@ public class BleNamesResolver {
 		mServices.put("0000fee0-0000-3512-2118-0009af100700", "(Propr: Xiaomi MiLi Service)");
 		mServices.put("00001530-0000-3512-2118-0009af100700", "(Propr: Xiaomi Weight Service)");
 		mServices.put("14701820-620a-3973-7c78-9cfff0876abd", "(Propr: HPLUS Service)");
+		mServices.put(VivomoveConstants.UUID_SERVICE_GARMIN_1.toString(), "(Propr: Garmin Service 2401)");
+		mServices.put(VivomoveConstants.UUID_SERVICE_GARMIN_2.toString(), "(Propr: Garmin Service 2500)");
 
 		
 		mCharacteristics.put("00002a43-0000-1000-8000-00805f9b34fb", "Alert AlertCategory ID");
@@ -189,6 +196,16 @@ public class BleNamesResolver {
 		
 		mCharacteristics.put("14702856-620a-3973-7c78-9cfff0876abd", "(Propr: HPLUS Control)");
 		mCharacteristics.put("14702853-620a-3973-7c78-9cfff0876abd", "(Propr: HPLUS Measurements)");
+		mCharacteristics.put(VivomoveConstants.UUID_CHARACTERISTIC_GARMIN_HEART_RATE.toString(), "(Propr: Garmin heart rate)");
+		mCharacteristics.put(VivomoveConstants.UUID_CHARACTERISTIC_GARMIN_STEPS.toString(), "(Propr: Garmin steps)");
+		mCharacteristics.put(VivomoveConstants.UUID_CHARACTERISTIC_GARMIN_CALORIES.toString(), "(Propr: Garmin calories)");
+		mCharacteristics.put(VivomoveConstants.UUID_CHARACTERISTIC_GARMIN_STAIRS.toString(), "(Propr: Garmin stairs)");
+		mCharacteristics.put(VivomoveConstants.UUID_CHARACTERISTIC_GARMIN_INTENSITY.toString(), "(Propr: Garmin intensity)");
+		mCharacteristics.put(VivomoveConstants.UUID_CHARACTERISTIC_GARMIN_HEART_RATE_VARIATION.toString(), "(Propr: Garmin HR variation)");
+		mCharacteristics.put(VivomoveConstants.UUID_CHARACTERISTIC_GARMIN_2_9.toString(), "(Propr: Garmin 2509)");
+		mCharacteristics.put(VivomoveConstants.UUID_CHARACTERISTIC_GARMIN_GFDI_SEND.toString(), "(Propr: Garmin GFDI send)");
+		mCharacteristics.put(VivomoveConstants.UUID_CHARACTERISTIC_GARMIN_GFDI_RECEIVE.toString(), "(Propr: Garmin GFDI receive)");
+
 		mValueFormats.put(Integer.valueOf(52), "32bit float");
 		mValueFormats.put(Integer.valueOf(50), "16bit float");
 		mValueFormats.put(Integer.valueOf(34), "16bit signed int");

@@ -95,6 +95,7 @@ import static nodomain.freeyourgadget.gadgetbridge.model.DeviceService.ACTION_EN
 import static nodomain.freeyourgadget.gadgetbridge.model.DeviceService.ACTION_ENABLE_REALTIME_STEPS;
 import static nodomain.freeyourgadget.gadgetbridge.model.DeviceService.ACTION_FETCH_RECORDED_DATA;
 import static nodomain.freeyourgadget.gadgetbridge.model.DeviceService.ACTION_FIND_DEVICE;
+import static nodomain.freeyourgadget.gadgetbridge.model.DeviceService.ACTION_FOUND_MY_PHONE;
 import static nodomain.freeyourgadget.gadgetbridge.model.DeviceService.ACTION_HEARTRATE_TEST;
 import static nodomain.freeyourgadget.gadgetbridge.model.DeviceService.ACTION_INSTALL;
 import static nodomain.freeyourgadget.gadgetbridge.model.DeviceService.ACTION_NOTIFICATION;
@@ -471,6 +472,10 @@ public class DeviceCommunicationService extends Service implements SharedPrefere
             case ACTION_FIND_DEVICE: {
                 boolean start = intent.getBooleanExtra(EXTRA_FIND_START, false);
                 mDeviceSupport.onFindDevice(start);
+                break;
+            }
+            case ACTION_FOUND_MY_PHONE: {
+                GB.closeFindMyPhoneNotification(mDeviceSupport.getContext());
                 break;
             }
             case ACTION_SET_CONSTANT_VIBRATION: {
