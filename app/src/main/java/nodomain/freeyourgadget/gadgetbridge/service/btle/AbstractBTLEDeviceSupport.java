@@ -92,9 +92,7 @@ public abstract class AbstractBTLEDeviceSupport extends AbstractDeviceSupport im
      * @param builder
      * @return the same builder as passed as the argument
      */
-    protected TransactionBuilder initializeDevice(TransactionBuilder builder) {
-        return builder;
-    }
+    protected abstract TransactionBuilder initializeDevice(TransactionBuilder builder);
 
     @Override
     public void dispose() {
